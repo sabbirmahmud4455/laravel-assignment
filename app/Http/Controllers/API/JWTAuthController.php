@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Auth;
+namespace App\Http\Controllers\API;
 
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -21,7 +21,6 @@ class JWTAuthController extends Controller
 
     public function register(Request $request)
     {
-
         $validator = Validator::make($request->all(),
             [
                 'name' => 'required',
@@ -34,20 +33,26 @@ class JWTAuthController extends Controller
             return response()->json(['error'=>$validator->errors()], 401);
         }
 
-        $user = new User();
-        $user->name = $request->name;
-        $user->email = $request->email;
-        $user->password = bcrypt($request->password);
-        $user->save();
+        try {
 
-        if ($this->token) {
-            return $this->login($request);
+            $user = new User();
+            $user->name = $request->name;
+            $user->email = $request->email;
+            $user->password = bcrypt($request->password);
+            $user->save();
+
+            if ($this->token) {
+                return $this->login($request);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $user
+            ], 201);
+
+        } catch (\Throwable $th) {
+            return response()->json(['error'=> "Server error"], 500);
         }
-
-        return response()->json([
-            'success' => true,
-            'data' => $user
-        ], 201);
     }
 
     public function login(Request $request)
@@ -98,8 +103,9 @@ class JWTAuthController extends Controller
             'token' => 'required'
         ]);
 
-        $user = JWTAuth::authenticate($request->token);
+        $user = JWTAuth::parseToken()->authenticate();
 
         return response()->json(['user' => $user]);
     }
 }
+
